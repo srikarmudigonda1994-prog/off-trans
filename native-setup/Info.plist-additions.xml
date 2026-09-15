@@ -1,0 +1,9 @@
+<!--
+  Add these keys inside the outermost <dict> of ios/OfflineTranslator/Info.plist
+-->
+
+<key>NSMicrophoneUsageDescription</key>
+<string>Used to record what you say for on-device speech translation.</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Used to pick a video to translate its subtitles.</string>

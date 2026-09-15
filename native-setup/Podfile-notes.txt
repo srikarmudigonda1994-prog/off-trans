@@ -1,0 +1,15 @@
+ios/Podfile
+-----------
+Set the deployment target to iOS 13 or higher (required by ML Kit
+and whisper.cpp's Core ML acceleration path):
+
+  platform :ios, '13.0'
+
+Then, from the ios/ directory:
+
+  pod install
+
+If ffmpeg-kit-next-react-native's pod isn't picked up automatically,
+add it explicitly above use_native_modules! per its README — some
+native-binary-heavy pods need to be listed before that line to avoid
+a subspec resolution error.

@@ -1,0 +1,41 @@
+{
+  "name": "offline-translator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "lint": "eslint .",
+    "test": "jest"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-native": "0.87.1",
+    "@react-navigation/native": "^6.1.18",
+    "@react-navigation/bottom-tabs": "^6.6.1",
+    "react-native-screens": "^3.34.0",
+    "react-native-safe-area-context": "^4.11.0",
+    "@react-native-ml-kit/translate-text": "^2.0.0",
+    "whisper.rn": "^0.4.0",
+    "react-native-tts": "^4.1.1",
+    "ffmpeg-kit-next-react-native": "^8.1.1",
+    "react-native-fs": "^2.20.0",
+    "react-native-audio-recorder-player": "^3.6.12",
+    "react-native-document-picker": "^9.3.1",
+    "@react-native-async-storage/async-storage": "^1.24.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@react-native/babel-preset": "0.87.1",
+    "@react-native/eslint-config": "0.87.1",
+    "@react-native/metro-config": "0.87.1",
+    "@react-native/typescript-config": "0.87.1",
+    "@types/react": "^19.1.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

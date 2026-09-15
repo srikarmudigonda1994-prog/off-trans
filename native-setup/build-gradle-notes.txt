@@ -1,0 +1,24 @@
+android/build.gradle (project level)
+-------------------------------------
+Make sure buildscript.ext sets a modern minSdkVersion — ML Kit
+translate and FFmpegKitNext both expect API 24+:
+
+  buildscript {
+      ext {
+          minSdkVersion = 24
+          compileSdkVersion = 34
+          targetSdkVersion = 34
+      }
+  }
+
+android/app/build.gradle (app level)
+-------------------------------------
+No extra dependency lines should be needed — ML Kit translate,
+whisper.rn, react-native-tts, and ffmpeg-kit-next-react-native all
+ship their own native Android code and are wired in automatically
+by React Native's autolinking when you run `npx react-native run-android`.
+
+If autolinking fails to pick up ffmpeg-kit-next-react-native, check
+its README for the current manual-linking steps — this is the
+package most likely to need a manual step since it bundles large
+native binaries per FFmpeg feature set (min / https / full / etc).
