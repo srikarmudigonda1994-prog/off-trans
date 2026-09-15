@@ -101,19 +101,23 @@ Android permissions/SDK versions and any stale `jcenter()` calls,
 That second commit triggers the workflow. Open the **Actions** tab to
 watch it run (a few minutes, mostly the Gradle build). When it's
 green, open the run, scroll to **Artifacts**, and download
-**offline-translator-debug-apk** — a zip containing `app-debug.apk`.
+**offline-translator-apk** — a zip containing `app-release.apk`.
 Get that onto your phone (email, Drive, etc.), tap it, and allow
-"install from unknown sources" when Android asks — expected for a
-debug build outside the Play Store.
+"install from unknown sources" when Android asks — expected since it
+isn't from the Play Store.
 
 Open the app, go to the **Models** tab first, and download the offline
 models once over Wi-Fi. Everything after that works with zero network
 access.
 
-**Note:** this is a debug build — fine to sideload and run yourself,
-but not signed for Play Store distribution. That's a separate step (a
-release keystore + signing config) worth doing once the app itself is
-where you want it.
+**Note:** this is a `release`-variant build (not `debug` — a `debug`
+build bundles no JavaScript and expects to fetch it live from a Metro
+dev server, which fails outside development). The workflow signs it
+with React Native's auto-generated debug keystore for convenience, so
+it installs and runs standalone, but that also means it isn't signed
+for Play Store distribution. Real release signing (your own keystore)
+is a separate step worth doing once the app itself is where you want
+it.
 
 <details>
 <summary>Prefer a local build instead? (needs Android Studio / SDK on your machine)</summary>
@@ -127,8 +131,8 @@ cd OfflineTranslator
 npm install
 # apply native-setup/AndroidManifest-additions.xml and
 # native-setup/build-gradle-notes.txt (including its jcenter() note)
-cd android && ./gradlew assembleDebug
-# APK: android/app/build/outputs/apk/debug/app-debug.apk
+cd android && ./gradlew assembleRelease
+# APK: android/app/build/outputs/apk/release/app-release.apk
 ```
 
 `native-setup/Info.plist-additions.xml` and `Podfile-notes.txt` cover
