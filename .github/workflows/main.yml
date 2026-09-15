@@ -28,7 +28,7 @@ jobs:
       - name: Verify expected project files are present
         run: |
           MISSING=""
-          for f in src package.json index.js app.json babel.config.js metro.config.js tsconfig.json; do
+          for f in src package.json index.js babel.config.js metro.config.js tsconfig.json; do
             if [ ! -e "$f" ]; then
               MISSING="$MISSING $f"
             fi
@@ -64,7 +64,15 @@ jobs:
       - name: Copy app source into the shell
         run: |
           cp -r src app-shell/
-          cp index.js app.json babel.config.js metro.config.js tsconfig.json app-shell/
+          cp index.js babel.config.js metro.config.js tsconfig.json app-shell/
+          # Deliberately NOT copying app.json: react-native init bakes
+          # the project name ("OfflineTranslatorShell") into the native
+          # Android code as the JS component name it expects. index.js
+          # reads that same name from app.json at runtime, so leaving
+          # the shell's own generated app.json in place keeps native
+          # and JS pointing at the same name. Overwriting it with a
+          # different app.json here is exactly what caused "X has not
+          # been registered" at launch.
 
       - name: Merge package.json dependencies
         run: |
