@@ -145,6 +145,58 @@ jobs:
           appGradle = appGradle.replace(/shrinkResources\s+.*/g, 'shrinkResources false');
           fs.writeFileSync(appGradlePath, appGradle);
           console.log('Disabled release minification in app/build.gradle');
+
+          // Capture native crashes to a file the app can display on its
+          // own Settings screen, since a native-level crash (as opposed
+          // to a JS exception) never reaches React Native's own error
+          // handling and normally needs adb/USB debugging to see at all.
+          function findFile(dir, name) {
+            let entries;
+            try {
+              entries = fs.readdirSync(dir, { withFileTypes: true });
+            } catch (e) {
+              return null;
+            }
+            for (const entry of entries) {
+              if (entry.isSymbolicLink()) continue;
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                const found = findFile(full, name);
+                if (found) return found;
+              } else if (entry.name === name) {
+                return full;
+              }
+            }
+            return null;
+          }
+
+          const mainAppPath = findFile(path.join(shellDir, 'android/app/src/main/java'), 'MainApplication.kt');
+          if (!mainAppPath) {
+            console.warn('Could not find MainApplication.kt — skipping crash log capture.');
+          } else {
+            let mainApp = fs.readFileSync(mainAppPath, 'utf8');
+            const marker = 'super.onCreate()';
+            if (mainApp.includes(marker) && !mainApp.includes('setDefaultUncaughtExceptionHandler')) {
+              const handlerCode = [
+                '    val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()',
+                '    Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->',
+                '      try {',
+                '        val sw = java.io.StringWriter()',
+                '        throwable.printStackTrace(java.io.PrintWriter(sw))',
+                '        java.io.File(filesDir, "last_crash.txt").writeText(sw.toString())',
+                '      } catch (e: Exception) {',
+                '      }',
+                '      defaultHandler?.uncaughtException(thread, throwable)',
+                '    }',
+                '',
+              ].join('\n');
+              mainApp = mainApp.replace(marker, marker + '\n' + handlerCode);
+              fs.writeFileSync(mainAppPath, mainApp);
+              console.log('Added crash log capture to', mainAppPath);
+            } else {
+              console.warn('Could not find insertion point in MainApplication.kt — skipping.');
+            }
+          }
           JSEOF
           node /tmp/patch-android.js app-shell
 
