@@ -26,11 +26,22 @@ registry access). That means:
     the New Architecture this RN version uses by default — replaced
     with the maintained `@dr.pogodin/react-native-fs` fork.
   - `react-native-audio-recorder-player` is now deprecated upstream in
-    favor of `react-native-nitro-sound` — but that in turn needs
-    FFmpeg-free handling too (see below), so this app uses
-    `@dr.pogodin/react-native-audio` instead, recording raw 16kHz mono
-    PCM directly and writing a WAV header by hand. No transcoding step
-    needed.
+    favor of `react-native-nitro-sound` — but Android's `MediaRecorder`
+    API, which nitro-sound and virtually every mature RN audio library
+    wraps, can only output compressed formats (AAC, AMR, etc.), never
+    raw PCM/WAV. The much smaller pool of libraries that *do* offer raw
+    PCM (via the lower-level `AudioRecord` API instead) turned out to
+    be either too new to trust or too old to work with the New
+    Architecture — including one, `@dr.pogodin/react-native-audio`,
+    that was tried here first and crashed natively on-device regardless
+    of configuration. Rather than keep gambling on a third-party
+    package for this one specific niche, this app now records audio
+    with a small custom native module built directly on Android's own
+    `android.media.AudioRecord` — a core, decades-stable part of the
+    OS itself, maintained by Google, not a community package. Its
+    Kotlin source lives inside `.github/workflows/build-apk.yml`
+    itself (the workflow writes it into the generated Android project
+    at build time) rather than as a separate file in this repo.
   - `ffmpeg-kit-react-native`'s underlying native Android artifact
     (`com.arthenica:ffmpeg-kit-https`) has actually been pulled from
     Maven Central, Google's repo, and JitPack — not just the GitHub
@@ -71,7 +82,7 @@ Output — translated text, or spoken audio (react-native-tts)
 | Capability | Library | Notes |
 |---|---|---|
 | Text translation | `@react-native-ml-kit/translate-text` | On-device, downloads a ~30MB language pack once per direction |
-| Audio recording | `@dr.pogodin/react-native-audio` | Captures raw 16kHz mono PCM directly; a WAV header is built in JS — no transcoding library needed |
+| Audio recording | Custom native module (Android `AudioRecord`) | Captures raw 16kHz mono PCM and writes a WAV file entirely in Kotlin — no third-party audio-recording package |
 | Speech-to-text | `whisper.rn` | Bundles whisper.cpp; downloads a ~140MB multilingual model once |
 | Text-to-speech | `react-native-tts` | Wraps the OS's built-in voices — no model download needed |
 | Video | — | Disabled — see "Known gaps" |
