@@ -200,6 +200,217 @@ jobs:
           JSEOF
           node /tmp/patch-android.js app-shell
 
+      - name: Add custom native audio recorder (Android AudioRecord)
+        run: |
+          cat > /tmp/add-audio-module.js << 'JSEOF'
+          const fs = require('fs');
+          const path = require('path');
+          const shellDir = process.argv[2];
+
+          function findFile(dir, name) {
+            let entries;
+            try {
+              entries = fs.readdirSync(dir, { withFileTypes: true });
+            } catch (e) {
+              return null;
+            }
+            for (const entry of entries) {
+              if (entry.isSymbolicLink()) continue;
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                const found = findFile(full, name);
+                if (found) return found;
+              } else if (entry.name === name) {
+                return full;
+              }
+            }
+            return null;
+          }
+
+          const mainAppPath = findFile(path.join(shellDir, 'android/app/src/main/java'), 'MainApplication.kt');
+          if (!mainAppPath) {
+            console.warn('Could not find MainApplication.kt — skipping custom audio module.');
+            process.exit(0);
+          }
+
+          const androidPackageDir = path.dirname(mainAppPath);
+
+          const moduleContent = [
+              "package com.offlinetranslator.app",
+              "",
+              "import android.Manifest",
+              "import android.content.pm.PackageManager",
+              "import android.media.AudioFormat",
+              "import android.media.AudioRecord",
+              "import android.media.MediaRecorder",
+              "import com.facebook.react.bridge.Promise",
+              "import com.facebook.react.bridge.ReactApplicationContext",
+              "import com.facebook.react.bridge.ReactContextBaseJavaModule",
+              "import com.facebook.react.bridge.ReactMethod",
+              "import java.io.File",
+              "import java.io.FileOutputStream",
+              "import java.io.RandomAccessFile",
+              "import kotlin.concurrent.thread",
+              "",
+              "class SimpleAudioRecorderModule(reactContext: ReactApplicationContext) :",
+              "  ReactContextBaseJavaModule(reactContext) {",
+              "",
+              "  override fun getName() = \"SimpleAudioRecorder\"",
+              "",
+              "  private var audioRecord: AudioRecord? = null",
+              "  private var recordingThread: Thread? = null",
+              "  @Volatile private var isRecording = false",
+              "  private var pcmFile: File? = null",
+              "",
+              "  private val sampleRate = 16000",
+              "  private val channelConfig = AudioFormat.CHANNEL_IN_MONO",
+              "  private val audioFormat = AudioFormat.ENCODING_PCM_16BIT",
+              "",
+              "  @ReactMethod",
+              "  fun startRecording(promise: Promise) {",
+              "    try {",
+              "      if (reactApplicationContext.checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=",
+              "        PackageManager.PERMISSION_GRANTED",
+              "      ) {",
+              "        promise.reject(\"PERMISSION_DENIED\", \"Microphone permission not granted\")",
+              "        return",
+              "      }",
+              "",
+              "      val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)",
+              "      val bufferSize = if (minBufferSize > 0) minBufferSize * 2 else sampleRate * 2",
+              "",
+              "      val recorder = AudioRecord(",
+              "        MediaRecorder.AudioSource.MIC,",
+              "        sampleRate,",
+              "        channelConfig,",
+              "        audioFormat,",
+              "        bufferSize,",
+              "      )",
+              "      audioRecord = recorder",
+              "",
+              "      val file = File(reactApplicationContext.cacheDir, \"rec-${System.currentTimeMillis()}.pcm\")",
+              "      pcmFile = file",
+              "      val fos = FileOutputStream(file)",
+              "",
+              "      recorder.startRecording()",
+              "      isRecording = true",
+              "",
+              "      recordingThread = thread {",
+              "        val buffer = ByteArray(bufferSize)",
+              "        while (isRecording) {",
+              "          val read = recorder.read(buffer, 0, buffer.size)",
+              "          if (read > 0) {",
+              "            fos.write(buffer, 0, read)",
+              "          }",
+              "        }",
+              "        fos.close()",
+              "      }",
+              "",
+              "      promise.resolve(null)",
+              "    } catch (e: Exception) {",
+              "      promise.reject(\"START_FAILED\", e.message, e)",
+              "    }",
+              "  }",
+              "",
+              "  @ReactMethod",
+              "  fun stopRecording(promise: Promise) {",
+              "    try {",
+              "      isRecording = false",
+              "      recordingThread?.join(2000)",
+              "      audioRecord?.stop()",
+              "      audioRecord?.release()",
+              "      audioRecord = null",
+              "",
+              "      val rawFile = pcmFile",
+              "      if (rawFile == null || !rawFile.exists()) {",
+              "        promise.reject(\"NO_FILE\", \"No recording found\")",
+              "        return",
+              "      }",
+              "",
+              "      val pcmData = rawFile.readBytes()",
+              "      val wavFile = File(reactApplicationContext.cacheDir, \"rec-${System.currentTimeMillis()}.wav\")",
+              "      writeWavFile(wavFile, pcmData)",
+              "      rawFile.delete()",
+              "",
+              "      promise.resolve(wavFile.absolutePath)",
+              "    } catch (e: Exception) {",
+              "      promise.reject(\"STOP_FAILED\", e.message, e)",
+              "    }",
+              "  }",
+              "",
+              "  private fun writeWavFile(file: File, pcmData: ByteArray) {",
+              "    val channels = 1",
+              "    val bitsPerSample = 16",
+              "    val byteRate = sampleRate * channels * bitsPerSample / 8",
+              "    val blockAlign = channels * bitsPerSample / 8",
+              "    val dataLength = pcmData.size",
+              "",
+              "    RandomAccessFile(file, \"rw\").use { raf ->",
+              "      raf.writeBytes(\"RIFF\")",
+              "      raf.write(intLE(36 + dataLength))",
+              "      raf.writeBytes(\"WAVE\")",
+              "      raf.writeBytes(\"fmt \")",
+              "      raf.write(intLE(16))",
+              "      raf.write(shortLE(1))",
+              "      raf.write(shortLE(channels))",
+              "      raf.write(intLE(sampleRate))",
+              "      raf.write(intLE(byteRate))",
+              "      raf.write(shortLE(blockAlign))",
+              "      raf.write(shortLE(bitsPerSample))",
+              "      raf.writeBytes(\"data\")",
+              "      raf.write(intLE(dataLength))",
+              "      raf.write(pcmData)",
+              "    }",
+              "  }",
+              "",
+              "  private fun intLE(value: Int): ByteArray = byteArrayOf(",
+              "    (value and 0xff).toByte(),",
+              "    ((value shr 8) and 0xff).toByte(),",
+              "    ((value shr 16) and 0xff).toByte(),",
+              "    ((value shr 24) and 0xff).toByte(),",
+              "  )",
+              "",
+              "  private fun shortLE(value: Int): ByteArray = byteArrayOf(",
+              "    (value and 0xff).toByte(),",
+              "    ((value shr 8) and 0xff).toByte(),",
+              "  )",
+              "}",
+          ].join('\n') + '\n';
+          const packageContent = [
+              "package com.offlinetranslator.app",
+              "",
+              "import com.facebook.react.ReactPackage",
+              "import com.facebook.react.bridge.NativeModule",
+              "import com.facebook.react.bridge.ReactApplicationContext",
+              "import com.facebook.react.uimanager.ViewManager",
+              "",
+              "class SimpleAudioRecorderPackage : ReactPackage {",
+              "  override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {",
+              "    return listOf(SimpleAudioRecorderModule(reactContext))",
+              "  }",
+              "",
+              "  override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {",
+              "    return emptyList()",
+              "  }",
+              "}",
+          ].join('\n') + '\n';
+
+          fs.writeFileSync(path.join(androidPackageDir, 'SimpleAudioRecorderModule.kt'), moduleContent);
+          fs.writeFileSync(path.join(androidPackageDir, 'SimpleAudioRecorderPackage.kt'), packageContent);
+          console.log('Wrote SimpleAudioRecorderModule.kt and SimpleAudioRecorderPackage.kt to', androidPackageDir);
+
+          let mainApp = fs.readFileSync(mainAppPath, 'utf8');
+          const pkgMarker = 'PackageList(this).packages';
+          if (mainApp.includes(pkgMarker) && !mainApp.includes('SimpleAudioRecorderPackage()')) {
+            mainApp = mainApp.replace(pkgMarker, pkgMarker + '.apply { add(SimpleAudioRecorderPackage()) }');
+            fs.writeFileSync(mainAppPath, mainApp);
+            console.log('Registered SimpleAudioRecorderPackage in', mainAppPath);
+          } else {
+            console.warn('Could not find package-list marker, or already registered — check manually.');
+          }
+          JSEOF
+          node /tmp/add-audio-module.js app-shell
+
       - name: Install dependencies
         working-directory: app-shell
         run: npm install
