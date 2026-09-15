@@ -1,6 +1,5 @@
-import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-next-react-native';
-import RNFS from 'react-native-fs';
-import type { TranscriptSegment } from '../../types';
+import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
+import * as RNFS from '@dr.pogodin/react-native-fs';
 
 // Note: the original ffmpeg-kit-react-native was retired in 2025.
 // This app uses FFmpegKitNext (`ffmpeg-kit-next-react-native`), the
