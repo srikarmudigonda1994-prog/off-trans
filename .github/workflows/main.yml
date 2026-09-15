@@ -1,4 +1,4 @@
-name: Build debug APK
+name: Build APK
 
 # Runs on every push to main, and can also be triggered manually from
 # the Actions tab (the "Run workflow" button).
@@ -8,7 +8,7 @@ name: Build debug APK
 # (uploaded as loose files/folders, not zipped), plus this workflow
 # file. It generates the native android/ project with the React
 # Native CLI, merges dependencies, patches Android permissions/SDK
-# versions, and builds a debug APK — all on GitHub's servers. Nothing
+# versions, and builds a release APK — all on GitHub's servers. Nothing
 # needs to be installed on your machine.
 on:
   workflow_dispatch:
@@ -137,6 +137,14 @@ jobs:
           const fs = require('fs');
           const path = require('path');
 
+          // JCenter shut down years ago, and modern Gradle (9.x, which
+          // this RN version uses) removed the jcenter() DSL method
+          // entirely rather than just deprecating it — so any
+          // native module whose Android build.gradle still calls it
+          // hard-fails configuration. Several older RN native modules
+          // (react-native-tts among them) still have this. Rather than
+          // patch them one at a time as each surfaces, scan every
+          // build.gradle under node_modules and fix all of them at once.
           function walk(dir, found) {
             let entries;
             try {
@@ -171,12 +179,12 @@ jobs:
           JSEOF
           node /tmp/fix-jcenter.js
 
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: app-shell/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: offline-translator-debug-apk
-          path: app-shell/android/app/build/outputs/apk/debug/app-debug.apk
+          name: offline-translator-apk
+          path: app-shell/android/app/build/outputs/apk/release/app-release.apk
