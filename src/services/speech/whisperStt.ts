@@ -1,5 +1,5 @@
 import { initWhisper, WhisperContext } from 'whisper.rn';
-import RNFS from 'react-native-fs';
+import * as RNFS from '@dr.pogodin/react-native-fs';
 import type { LanguageCode, TranscriptResult, TranscriptSegment } from '../../types';
 
 let whisperContext: WhisperContext | null = null;
