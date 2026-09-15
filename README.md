@@ -185,10 +185,6 @@ native-setup/                Copy-paste native config snippets
 - **App size**: the whisper model is downloaded at runtime rather than
   bundled, specifically to keep the App Store / Play Store binary
   small and avoid Metro's asset bundling limits on large files.
-- **`@dr.pogodin/react-native-audio` may need `react-native-permissions`
-  for a smooth runtime mic-permission prompt** on some OS versions,
-  on top of the manifest declaration — if recording silently fails to
-  start on a real device, that's the first thing to add.
 
 ## Extending this
 

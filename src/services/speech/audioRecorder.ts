@@ -5,6 +5,7 @@ import {
   InputAudioStream,
 } from '@dr.pogodin/react-native-audio';
 import { Buffer } from 'buffer';
+import { PermissionsAndroid, Platform } from 'react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 // Records raw 16kHz mono PCM directly — the exact format whisper.cpp
@@ -42,7 +43,33 @@ function buildWavHeader(dataLength: number): Buffer {
   return header;
 }
 
-export function startRecording(): void {
+/**
+ * The manifest declares RECORD_AUDIO, but Android also requires the
+ * app to explicitly ask the user for that permission at runtime —
+ * without this, the native recorder throws a security exception with
+ * nothing on the JS side to catch it, which crashes the whole app
+ * rather than surfacing a normal error. PermissionsAndroid is part of
+ * React Native core, so this needs no extra native dependency.
+ */
+async function ensureMicPermission(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+
+  const granted = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    {
+      title: 'Microphone permission',
+      message: 'Offline Translator needs microphone access to record what you say.',
+      buttonPositive: 'OK',
+    },
+  );
+  if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+    throw new Error('Microphone permission was not granted');
+  }
+}
+
+export async function startRecording(): Promise<void> {
+  await ensureMicPermission();
+
   chunks = [];
   // RAW = no automatic gain control / noise suppression, matching the
   // library's own example. Fine for speech-to-text input.

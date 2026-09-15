@@ -32,10 +32,21 @@ export function AudioTranslateScreen() {
     setError(null);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     reset();
-    setStage('recording');
-    startRecording();
+    try {
+      // Requests the microphone permission if needed and starts the
+      // stream; stays on 'idle' (rather than optimistically flipping
+      // to 'recording') until that's actually succeeded, so a denied
+      // permission shows an error instead of a stuck fake-recording UI.
+      await startRecording();
+      setStage('recording');
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'Could not start recording',
+      );
+      setStage('idle');
+    }
   };
 
   const handleStop = async () => {
