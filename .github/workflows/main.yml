@@ -123,6 +123,20 @@ jobs:
           bump('targetSdkVersion', 34);
           fs.writeFileSync(gradlePath, gradle);
           console.log('Checked SDK versions in build.gradle');
+
+          // Release builds default to minification (R8/ProGuard) on,
+          // which frequently strips or renames classes that RN native
+          // modules reach via reflection — the app installs but
+          // crashes immediately on launch, with no build-time error to
+          // point at. Disabling it trades a larger APK for a release
+          // build that behaves like debug at the JS/native boundary,
+          // which is the right trade for a sideloaded personal build.
+          const appGradlePath = path.join(shellDir, 'android/app/build.gradle');
+          let appGradle = fs.readFileSync(appGradlePath, 'utf8');
+          appGradle = appGradle.replace(/minifyEnabled\s+.*/g, 'minifyEnabled false');
+          appGradle = appGradle.replace(/shrinkResources\s+.*/g, 'shrinkResources false');
+          fs.writeFileSync(appGradlePath, appGradle);
+          console.log('Disabled release minification in app/build.gradle');
           JSEOF
           node /tmp/patch-android.js app-shell
 
@@ -137,14 +151,6 @@ jobs:
           const fs = require('fs');
           const path = require('path');
 
-          // JCenter shut down years ago, and modern Gradle (9.x, which
-          // this RN version uses) removed the jcenter() DSL method
-          // entirely rather than just deprecating it — so any
-          // native module whose Android build.gradle still calls it
-          // hard-fails configuration. Several older RN native modules
-          // (react-native-tts among them) still have this. Rather than
-          // patch them one at a time as each surfaces, scan every
-          // build.gradle under node_modules and fix all of them at once.
           function walk(dir, found) {
             let entries;
             try {
