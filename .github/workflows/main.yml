@@ -1,14 +1,5 @@
 name: Build debug APK
 
-# Runs on every push to main, and can also be triggered manually from
-# the Actions tab (the "Run workflow" button).
-#
-# Expects a single .zip file (the OfflineTranslator.zip you downloaded,
-# uploaded as-is) sitting at the root of this repo, plus this workflow
-# file itself. It unzips that project, generates the native android/
-# project with the React Native CLI, merges dependencies, patches
-# Android permissions/SDK versions, and builds a debug APK — all on
-# GitHub's servers. Nothing needs to be installed on your machine.
 on:
   workflow_dispatch:
   push:
@@ -24,23 +15,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Locate and unzip the uploaded project
+      - name: Verify expected project files are present
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -iname "*.zip" | head -n 1)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "::error::No .zip file found at the repo root. Upload OfflineTranslator.zip there (Add file -> Upload files) and re-run."
+          MISSING=""
+          for f in src package.json index.js app.json babel.config.js metro.config.js tsconfig.json; do
+            if [ ! -e "$f" ]; then
+              MISSING="$MISSING $f"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing expected file(s)/folder(s) at repo root:$MISSING"
+            echo "Make sure these were uploaded directly to the repo root (not inside a subfolder)."
             exit 1
           fi
-          echo "Found $ZIP_FILE"
-          unzip -q "$ZIP_FILE" -d extracted
-          PROJECT_DIR=$(find extracted -maxdepth 1 -mindepth 1 -type d | head -n 1)
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "::error::Couldn't find a project folder inside the zip."
-            exit 1
-          fi
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Using project at $PROJECT_DIR"
-          ls "$PROJECT_DIR"
+          echo "All expected files found at repo root:"
+          ls
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -65,9 +54,8 @@ jobs:
 
       - name: Copy app source into the shell
         run: |
-          cp -r "$PROJECT_DIR/src" app-shell/
-          cp "$PROJECT_DIR/index.js" "$PROJECT_DIR/app.json" "$PROJECT_DIR/babel.config.js" \
-             "$PROJECT_DIR/metro.config.js" "$PROJECT_DIR/tsconfig.json" app-shell/
+          cp -r src app-shell/
+          cp index.js app.json babel.config.js metro.config.js tsconfig.json app-shell/
 
       - name: Merge package.json dependencies
         run: |
@@ -81,7 +69,7 @@ jobs:
           fs.writeFileSync(destPath, JSON.stringify(dest, null, 2) + '\n');
           console.log('Merged dependencies into', destPath);
           JSEOF
-          node /tmp/merge-pkg.js "$PROJECT_DIR/package.json" app-shell/package.json
+          node /tmp/merge-pkg.js package.json app-shell/package.json
 
       - name: Patch AndroidManifest.xml and build.gradle
         run: |
