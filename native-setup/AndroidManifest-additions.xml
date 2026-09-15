@@ -8,11 +8,3 @@
 
 <!-- Needed for the Audio tab's recorder. -->
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-<!-- Needed for the Video tab's document/video picker.
-     READ_MEDIA_VIDEO is the modern (API 33+) permission;
-     READ_EXTERNAL_STORAGE covers older OS versions. -->
-<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-<uses-permission
-    android:name="android.permission.READ_EXTERNAL_STORAGE"
-    android:maxSdkVersion="32" />

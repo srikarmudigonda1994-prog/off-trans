@@ -1,4 +1,8 @@
 import { initWhisper, WhisperContext } from 'whisper.rn';
+// The original react-native-fs is abandoned and doesn't work with the
+// New Architecture RN 0.87 uses by default — this maintained fork is
+// a near drop-in replacement (same constants/methods), just imported
+// as a namespace rather than a default export.
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import type { LanguageCode, TranscriptResult, TranscriptSegment } from '../../types';
 

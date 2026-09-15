@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -7,10 +7,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import AudioRecorderPlayer from 'react-native-nitro-sound';
 import { LanguageSwap } from '../components/LanguageSwap';
 import { transcribeAudio } from '../services/speech/whisperStt';
-import { transcodeAudioForWhisper } from '../services/video/ffmpegPipeline';
+import { startRecording, stopRecording } from '../services/speech/audioRecorder';
 import { translateText } from '../services/translation/mlkitTranslate';
 import { speak } from '../services/speech/tts';
 import { otherLanguage } from '../constants/languages';
@@ -25,9 +24,6 @@ export function AudioTranslateScreen() {
   const [translated, setTranslated] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // react-native-audio-recorder-player instances are cheap and
-  // stateless enough to keep in a ref for the component's lifetime.
-  const recorder = useRef(new AudioRecorderPlayer()).current;
   const to = otherLanguage(from);
 
   const reset = () => {
@@ -36,19 +32,17 @@ export function AudioTranslateScreen() {
     setError(null);
   };
 
-  const startRecording = async () => {
+  const handleStart = () => {
     reset();
     setStage('recording');
-    await recorder.startRecorder();
+    startRecording();
   };
 
-  const stopRecording = async () => {
+  const handleStop = async () => {
     try {
-      const recordedPath = await recorder.stopRecorder();
-      recorder.removeRecordBackListener();
-
       setStage('transcribing');
-      const wavPath = await transcodeAudioForWhisper(recordedPath);
+      // Recording is already 16kHz mono WAV — no conversion step needed.
+      const wavPath = await stopRecording();
       const { text } = await transcribeAudio(wavPath, from);
       setTranscript(text);
 
@@ -82,7 +76,7 @@ export function AudioTranslateScreen() {
             stage === 'recording' && styles.recordButtonActive,
           ]}
           disabled={isBusy}
-          onPress={stage === 'recording' ? stopRecording : startRecording}>
+          onPress={stage === 'recording' ? handleStop : handleStart}>
           <Text style={styles.recordIcon}>{stage === 'recording' ? '■' : '●'}</Text>
         </Pressable>
         <Text style={styles.hint}>

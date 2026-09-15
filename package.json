@@ -19,11 +19,9 @@
     "@react-native-ml-kit/translate-text": "^0.5.0",
     "whisper.rn": "^0.5.2",
     "react-native-tts": "^4.1.1",
-    "ffmpeg-kit-react-native": "^6.0.2",
     "@dr.pogodin/react-native-fs": "^2.40.2",
-     "react-native-nitro-sound": "^0.2.19",
-    "react-native-nitro-modules": "^0.37.1",
-    "react-native-document-picker": "^7.1.1",
+    "@dr.pogodin/react-native-audio": "^1.19.0",
+    "buffer": "^6.0.3",
     "@react-native-async-storage/async-storage": "^3.1.1"
   },
   "devDependencies": {

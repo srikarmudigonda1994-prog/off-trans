@@ -1,7 +1,7 @@
 android/build.gradle (project level)
 -------------------------------------
 Make sure buildscript.ext sets a modern minSdkVersion — ML Kit
-translate and FFmpegKitNext both expect API 24+:
+translate expects API 24+:
 
   buildscript {
       ext {
@@ -14,11 +14,13 @@ translate and FFmpegKitNext both expect API 24+:
 android/app/build.gradle (app level)
 -------------------------------------
 No extra dependency lines should be needed — ML Kit translate,
-whisper.rn, react-native-tts, and ffmpeg-kit-next-react-native all
-ship their own native Android code and are wired in automatically
-by React Native's autolinking when you run `npx react-native run-android`.
+whisper.rn, react-native-tts, @dr.pogodin/react-native-fs, and
+@dr.pogodin/react-native-audio all ship their own native Android code
+and are wired in automatically by React Native's autolinking when you
+run `npx react-native run-android`.
 
-If autolinking fails to pick up ffmpeg-kit-next-react-native, check
-its README for the current manual-linking steps — this is the
-package most likely to need a manual step since it bundles large
-native binaries per FFmpeg feature set (min / https / full / etc).
+Known gotcha: some older native modules' own android/build.gradle
+still call the removed jcenter() repository method, which hard-fails
+on modern Gradle (9.x). If you hit "Could not find method jcenter()",
+that's the cause — find the offending package's android/build.gradle
+in node_modules and replace jcenter() with mavenCentral().
