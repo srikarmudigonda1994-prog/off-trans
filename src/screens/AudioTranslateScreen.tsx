@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import AudioRecorderPlayer from 'react-native-nitro-sound';
 import { LanguageSwap } from '../components/LanguageSwap';
 import { transcribeAudio } from '../services/speech/whisperStt';
 import { transcodeAudioForWhisper } from '../services/video/ffmpegPipeline';
