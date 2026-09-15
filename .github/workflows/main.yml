@@ -95,10 +95,6 @@ jobs:
               '    <uses-permission android:name="android.permission.INTERNET" />',
             'android.permission.RECORD_AUDIO':
               '    <uses-permission android:name="android.permission.RECORD_AUDIO" />',
-            'android.permission.READ_MEDIA_VIDEO':
-              '    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />',
-            'android.permission.READ_EXTERNAL_STORAGE':
-              '    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />',
           };
           const missing = Object.keys(permissionLines).filter(name => !manifest.includes(name));
           if (missing.length > 0) {
