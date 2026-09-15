@@ -1,5 +1,15 @@
 name: Build debug APK
 
+# Runs on every push to main, and can also be triggered manually from
+# the Actions tab (the "Run workflow" button).
+#
+# Expects this repo's root to directly contain src/, package.json,
+# index.js, app.json, babel.config.js, metro.config.js, tsconfig.json
+# (uploaded as loose files/folders, not zipped), plus this workflow
+# file. It generates the native android/ project with the React
+# Native CLI, merges dependencies, patches Android permissions/SDK
+# versions, and builds a debug APK — all on GitHub's servers. Nothing
+# needs to be installed on your machine.
 on:
   workflow_dispatch:
   push:
@@ -35,7 +45,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -124,6 +133,47 @@ jobs:
       - name: Install dependencies
         working-directory: app-shell
         run: npm install
+
+      - name: Patch legacy jcenter() repositories in dependencies
+        working-directory: app-shell
+        run: |
+          cat > /tmp/fix-jcenter.js << 'JSEOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          function walk(dir, found) {
+            let entries;
+            try {
+              entries = fs.readdirSync(dir, { withFileTypes: true });
+            } catch (e) {
+              return;
+            }
+            for (const entry of entries) {
+              if (entry.isSymbolicLink()) continue;
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                walk(full, found);
+              } else if (entry.name === 'build.gradle') {
+                found.push(full);
+              }
+            }
+          }
+
+          const gradleFiles = [];
+          walk('node_modules', gradleFiles);
+
+          let patchedCount = 0;
+          for (const file of gradleFiles) {
+            const content = fs.readFileSync(file, 'utf8');
+            if (content.includes('jcenter()')) {
+              fs.writeFileSync(file, content.split('jcenter()').join('mavenCentral()'));
+              console.log('Patched jcenter() -> mavenCentral() in', file);
+              patchedCount += 1;
+            }
+          }
+          console.log(`Scanned ${gradleFiles.length} build.gradle file(s), patched ${patchedCount}.`);
+          JSEOF
+          node /tmp/fix-jcenter.js
 
       - name: Build debug APK
         working-directory: app-shell/android
